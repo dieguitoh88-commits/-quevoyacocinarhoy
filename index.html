@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Recetario Casero</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-amber-50/40 text-slate-800 font-sans antialiased pb-12">
+
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-amber-100 sticky top-0 z-50">
+        <div class="max-w-md mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-amber-500 text-white p-2 rounded-xl shadow-sm text-xl">🍳</div>
+                <div>
+                    <h1 class="font-bold text-lg text-slate-900 leading-tight">Mi Recetario Casero</h1>
+                    <p class="text-xs text-slate-500">Opciones rápidas con lo que tenés</p>
+                </div>
+            </div>
+            <div class="text-xs bg-emerald-100 text-emerald-800 px-2.5 py-1.5 rounded-lg font-medium">
+                ⚡ 100% Offline
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto px-4 mt-4 space-y-6">
+
+        <!-- ¿Qué tenés en la heladera? -->
+        <section class="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3">
+            <div>
+                <h2 class="font-bold text-slate-900 text-base">¿Qué tenés en la heladera?</h2>
+                <p class="text-xs text-slate-500">Tocá los ingredientes disponibles</p>
+            </div>
+
+            <!-- Grilla de ingredientes -->
+            <div id="ingredientsGrid" class="grid grid-cols-3 gap-2.5 pt-2"></div>
+        </section>
+
+        <!-- Botón principal de búsqueda -->
+        <button onclick="buscarRecetas(true)" class="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-3.5 px-4 rounded-2xl shadow-lg shadow-amber-500/25 flex items-center justify-center space-x-2 transition transform active:scale-95">
+            <span class="text-xl">🔍</span>
+            <span class="text-base">Buscar recetas fáciles</span>
+        </button>
+
+        <!-- Sección de Resultados -->
+        <div id="resultsSection" class="hidden space-y-4 pt-2">
+            <div class="text-xs px-3 py-2 rounded-xl font-medium flex items-center gap-1.5 bg-emerald-100 text-emerald-800 border border-emerald-200">
+                🎯 <strong>Las opciones más fáciles y rápidas para vos</strong>
+            </div>
+            
+            <div id="recipesContainer" class="space-y-4"></div>
+
+            <!-- Botón para ver más recetas (aparece si hay más en cola) -->
+            <button id="btnVerMas" onclick="buscarRecetas(false)" class="hidden w-full bg-white border-2 border-amber-400 hover:bg-amber-50 text-amber-900 font-bold py-3 px-4 rounded-2xl shadow-sm flex items-center justify-center space-x-2 transition">
+                <span>🔄 Dame 3 recetas más</span>
+            </button>
+        </div>
+
+    </main>
+
+    <!-- CARGAMOS NUESTRA BASE DE DATOS EXTERNA -->
+    <script src="recetas.js"></script>
+
+    <script>
+        let selectedIngredients = [];
+        let recetasFiltradasActuales = [];
+        let indiceActual = 0;
+
+        const availableIngredients = [
+            { name: 'Huevo', icon: '🥚' },
+            { name: 'Papa', icon: '🥔' },
+            { name: 'Cebolla', icon: '🧅' },
+            { name: 'Tomate', icon: '🍅' },
+            { name: 'Fideos', icon: '🍝' },
+            { name: 'Queso', icon: '🧀' }
+        ];
+
+        function initIngredients() {
+            const grid = document.getElementById('ingredientsGrid');
+            grid.innerHTML = '';
+            availableIngredients.forEach(item => {
+                const isSelected = selectedIngredients.includes(item.name);
+                const btn = document.createElement('button');
+                btn.className = `flex flex-col items-center justify-center p-2.5 rounded-xl border transition text-xs font-medium ${
+                    isSelected 
+                        ? 'bg-amber-50 border-amber-500 text-amber-900 shadow-sm ring-1 ring-amber-500' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                }`;
+                btn.innerHTML = `<span class="text-2xl mb-1">${item.icon}</span><span>${item.name}</span>`;
+                btn.onclick = () => toggleIngredient(item.name);
+                grid.appendChild(btn);
+            });
+        }
+
+        function toggleIngredient(name) {
+            if (selectedIngredients.includes(name)) {
+                selectedIngredients = selectedIngredients.filter(i => i !== name);
+            } else {
+                selectedIngredients.push(name);
+            }
+            initIngredients();
+        }
+
+        function buscarRecetas(reiniciar = true) {
+            if (selectedIngredients.length === 0) {
+                alert('Por favor, seleccioná al menos un ingrediente.');
+                return;
+            }
+
+            const results = document.getElementById('resultsSection');
+            const container = document.getElementById('recipesContainer');
+            const btnVerMas = document.getElementById('btnVerMas');
+
+            if (reiniciar) {
+                indiceActual = 0;
+                // Filtramos respetando estrictamente el orden de prioridad del archivo recetas.js
+                recetasFiltradasActuales = misRecetas.filter(receta => {
+                    return receta.ingredientes.every(ing => selectedIngredients.includes(ing));
+                });
+                container.innerHTML = '';
+            }
+
+            if (recetasFiltradasActuales.length === 0) {
+                results.classList.remove('hidden');
+                container.innerHTML = `
+                    <div class="bg-white p-4 rounded-2xl text-center text-slate-500 text-xs shadow-sm border border-slate-100">
+                        No hay recetas exactas con esa combinación en el recetario todavía. ¡Sigamos sumando platos!
+                    </div>`;
+                btnVerMas.classList.add('hidden');
+                return;
+            }
+
+            // Extraemos el siguiente bloque de 3 recetas según la prioridad
+            const lote = recetasFiltradasActuales.slice(indiceActual, indiceActual + 3);
+
+            if (reiniciar) {
+                container.innerHTML = '';
+            }
+
+            lote.forEach((r, idx) => {
+                const globalIdx = indiceActual + idx;
+                const badgeColor = globalIdx === 0 ? 'bg-amber-100 text-amber-800' : globalIdx === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800';
+                const badgeText = `⭐ Prioridad N° ${globalIdx + 1}`;
+
+                const card = document.createElement('div');
+                card.className = 'bg-white p-4 rounded-2xl shadow-sm border border-slate-100 space-y-3';
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <span class="text-xs font-bold px-2.5 py-1 rounded-full ${badgeColor}">${badgeText}</span>
+                        <span class="text-xs text-slate-400">⏱️ ${r.tiempo} min • 👤 ${r.porciones} porción</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900 text-base">${r.titulo}</h4>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-xl space-y-1.5">
+                        <p class="text-xs font-semibold text-slate-700">Pasos:</p>
+                        <ol class="text-xs text-slate-600 space-y-1 pl-4 list-decimal">
+                            ${r.pasos.map(s => `<li>${s}</li>`).join('')}
+                        </ol>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            indiceActual += 3;
+
+            // Si quedan más recetas en cola, mostramos el botón "Dame 3 más"
+            if (indiceActual < recetasFiltradasActuales.length) {
+                btnVerMas.classList.remove('hidden');
+            } else {
+                btnVerMas.classList.add('hidden');
+            }
+
+            results.classList.remove('hidden');
+            if (reiniciar) {
+                results.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+
+        initIngredients();
+    </script>
+</body>
+</html>
